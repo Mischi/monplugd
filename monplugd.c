@@ -33,7 +33,7 @@ main(int argc, char *argv[])
 
 	if ((conn = xcb_connect(NULL, &screen)) == NULL ||
 	    xcb_connection_has_error(conn))
-		errx(1, "Cannot open display\n");
+		errx(1, "cannot open display\n");
 	
 	root_screen = xcb_aux_get_screen(conn, screen);
 
@@ -44,8 +44,7 @@ main(int argc, char *argv[])
 	evt_base = extreply->first_event;
 
 	xcb_randr_select_input(conn, root_screen->root,
-		       XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE |
-		       XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
+		       XCB_RANDR_NOTIFY_MASK_SCREEN_CHANGE);
 
 	xcb_flush(conn);
 	while ((evt = xcb_wait_for_event(conn))) {
@@ -53,9 +52,6 @@ main(int argc, char *argv[])
 		case XCB_RANDR_SCREEN_CHANGE_NOTIFY:
 			sce = (xcb_randr_screen_change_notify_event_t *)evt;
 			printf("screen change notification\n");
-			break;
-		case XCB_RANDR_NOTIFY:
-			printf("notification\n");
 			break;
 		default:
 			printf("unknown event %d\n", evt->response_type - evt_base);
