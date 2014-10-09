@@ -35,33 +35,34 @@
 #define _LOG_FACILITY			LOG_DAEMON
 #define _LOG_OPT			(LOG_NDELAY | LOG_PID)
 
-volatile sig_atomic_t quit = 0;
+Display				*dpy;
+volatile sig_atomic_t		 quit = 0;
+const char			*script = NULL;
 const char *connstates[] = { "connected", "disconnected", "unknown" };
+int 				 debug = 0, interval = 1;
 
-void exec_script(const char *, const char *, char *);
+char *getscript(void);
+void  monplugd(void);
+void  exec_script(const char *, const char *, char *);
 
-void sigchild(int);
-void sigquit(int);
+void  sigchild(int);
+void  sigquit(int);
 __dead void usage(void);
 
 int
 main(int argc, char *argv[])
 {
-	Display				*dpy;
-	XRRScreenResources		*resources;
-	XRROutputInfo			*info;
-	XRROutputChangeNotifyEvent	*ocevt;
-	char				*script = "/home/mischi/.monplugd";
 	const char			*errstr;
-	Window				 root;
-	XRRNotifyEvent			 evt;
 	struct sigaction		 sact;
-	int				 c, debug = 0, interval = 1, screen;
+	int				 ch, EFlag = 0;
 
-	while ((c = getopt(argc, argv, "df:i:")) != -1)
-		switch (c) {
+	while ((ch = getopt(argc, argv, "dEf:i:")) != -1)
+		switch (ch) {
 		case 'd':
 			debug = 1;
+			break;
+		case 'E':
+			EFlag = 1;
 			break;
 		case 'f':
 			script = optarg;
@@ -78,8 +79,19 @@ main(int argc, char *argv[])
 
 	argc -= optind;
 	argv += optind;
-	if (argc > 0)
+	if (argc > 0 || (EFlag && optind > 2))
 		usage();
+
+	if ((dpy = XOpenDisplay(NULL)) == NULL)
+		errx(1, "can't open display");
+
+	if (EFlag) {
+		printf("edid hash\n");
+		return (0);
+	}
+
+	if (!script)
+		script = getscript();
 
 	bzero(&sact, sizeof(sact));
 	sigemptyset(&sact.sa_mask);
@@ -95,25 +107,57 @@ main(int argc, char *argv[])
 	sact.sa_flags = SA_NOCLDSTOP;
 	sigaction(SIGCHLD, &sact, NULL);
 
-	if ((dpy = XOpenDisplay(NULL)) == NULL)
-		errx(1, "can't open display");
 
 	openlog(_LOG_TAG, _LOG_OPT, _LOG_FACILITY);
 	if (!debug && daemon(0, 0) == -1)
 		err(1, "daemon");
 
 	syslog(LOG_INFO, "started");
+	monplugd();
+	syslog(LOG_INFO, "terminated");
+
+	closelog();
+	return (0);
+}
+
+char *
+getscript(void)
+{
+	const char			*home;
+	static char			 scriptbuf[1024];
+	int				 ret;
+
+	if (!(home = getenv("HOME")))
+		errx(1, "can't find HOME");
+
+	ret = snprintf(scriptbuf, sizeof(scriptbuf), "%s/.monplugd", home);
+	if (ret == -1 || ret >= sizeof(scriptbuf))
+		errx(1, "scriptpath to long");
+
+	return scriptbuf;
+}
+
+void
+monplugd(void)
+{
+	XRRScreenResources		*resources;
+	XRROutputInfo			*info;
+	XRROutputChangeNotifyEvent	*ocevt;
+	Window				 root;
+	XRRNotifyEvent			 evt;
+
 
 	XRRSelectInput(dpy, DefaultRootWindow(dpy), RROutputChangeNotifyMask);
 
 	while (!quit) {
 		while (XPending(dpy)) {
 			XNextEvent(dpy, (XEvent *)&evt);
-			resources = XRRGetScreenResources(dpy, evt.window);
 
 			switch (evt.subtype) {
 			case RRNotify_OutputChange:
 				ocevt = (XRROutputChangeNotifyEvent *)&evt;
+				resources = XRRGetScreenResources(dpy,
+						evt.window);
 				info = XRRGetOutputInfo(evt.display, resources,
 						ocevt->output);
 
@@ -125,13 +169,12 @@ main(int argc, char *argv[])
 						"EDID");
 
 				XRRFreeOutputInfo(info);
+				XRRFreeScreenResources(resources);
 				break;
 			default:
 				syslog(LOG_NOTICE, "unknown event");
 				break;
 			}
-
-			XRRFreeScreenResources(resources);
 		}
 
 		/*
@@ -141,15 +184,10 @@ main(int argc, char *argv[])
 		 */
 		sleep(interval);
 
-		screen = DefaultScreen(dpy);
-		root = RootWindow(dpy, screen);
-		XRRGetScreenResources(dpy, root);
+		root = RootWindow(dpy, DefaultScreen(dpy));
+		resources = XRRGetScreenResources(dpy, root);
+		XRRFreeScreenResources(resources);
 	}
-
-	syslog(LOG_INFO, "terminated");
-	closelog();
-
-	return (0);
 }
 
 void
@@ -226,6 +264,8 @@ usage(void)
 {
 	extern char *__progname;
 
-	fprintf(stderr, "usage: %s [-d] [-f file] [-i interval]\n", __progname);
+	fprintf(stderr, "usage:"
+		"\t%s [-d] [-f file] [-i interval]\n"
+		"\t%s -E\n", __progname, __progname);
 	exit(1);
 }
