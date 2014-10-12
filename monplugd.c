@@ -1,7 +1,7 @@
 /*	$OpenBSD: hotplugd.c,v 1.12 2010/01/10 13:20:41 grange Exp $	*/
 /*
- * Copyright (c) 2014 Fabian Raetz <fabian.raetz@gmail.com>
  * Copyright (c) 2004 Alexander Yurchenko <grange@openbsd.org>
+ * Copyright (c) 2014 Fabian Raetz <fabian.raetz@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -40,6 +40,7 @@ volatile sig_atomic_t		 quit = 0;
 const char			*script = NULL;
 const char *connstates[] = { "connected", "disconnected", "unknown" };
 int 				 debug = 0, interval = 1;
+int				 rr_event_base, rr_event_error;
 
 char *getscript(void);
 void  monplugd(void);
@@ -85,6 +86,11 @@ main(int argc, char *argv[])
 	if ((dpy = XOpenDisplay(NULL)) == NULL)
 		errx(1, "can't open display");
 
+	if (!XRRQueryExtension(dpy, &rr_event_base, &rr_event_error)) {
+		XCloseDisplay(dpy);
+		errx(1, "no randr available");
+	}
+
 	if (EFlag) {
 		printf("edid hash\n");
 		return (0);
@@ -97,10 +103,9 @@ main(int argc, char *argv[])
 	sigemptyset(&sact.sa_mask);
 	sact.sa_flags = 0;
 	sact.sa_handler = sigquit;
-	/* XXX coredumps */
-	/*sigaction(SIGINT, &sact, NULL);
+	sigaction(SIGINT, &sact, NULL);
 	sigaction(SIGQUIT, &sact, NULL);
-	sigaction(SIGTERM, &sact, NULL);*/
+	sigaction(SIGTERM, &sact, NULL);
 	sact.sa_handler = SIG_IGN;
 	sigaction(SIGHUP, &sact, NULL);
 	sact.sa_handler = sigchild;
@@ -116,6 +121,7 @@ main(int argc, char *argv[])
 	monplugd();
 	syslog(LOG_INFO, "terminated");
 
+	XCloseDisplay(dpy);
 	closelog();
 	return (0);
 }
@@ -142,39 +148,39 @@ monplugd(void)
 {
 	XRRScreenResources		*resources;
 	XRROutputInfo			*info;
-	XRROutputChangeNotifyEvent	*ocevt;
+	XRROutputChangeNotifyEvent	*rrocevt;
+	XRRNotifyEvent			*rrevt;
 	Window				 root;
-	XRRNotifyEvent			 evt;
+	XEvent	 			 evt;
 
 
 	XRRSelectInput(dpy, DefaultRootWindow(dpy), RROutputChangeNotifyMask);
 
 	while (!quit) {
 		while (XPending(dpy)) {
-			XNextEvent(dpy, (XEvent *)&evt);
+			XNextEvent(dpy, &evt);
 
-			switch (evt.subtype) {
-			case RRNotify_OutputChange:
-				ocevt = (XRROutputChangeNotifyEvent *)&evt;
-				resources = XRRGetScreenResources(dpy,
-						evt.window);
-				info = XRRGetOutputInfo(evt.display, resources,
-						ocevt->output);
+			if (evt.type != rr_event_base + RRNotify)
+				continue;
 
-				syslog(LOG_INFO, "%s connection state: %s",
-						info->name,
-						connstates[info->connection]);
+			rrevt = (XRRNotifyEvent *)&evt;
+			if (rrevt->subtype != RRNotify_OutputChange) 
+				continue;
 
-				exec_script(script, connstates[info->connection],
-						"EDID");
+			rrocevt = (XRROutputChangeNotifyEvent *)&evt;
+			resources = XRRGetScreenResourcesCurrent(dpy,
+					rrocevt->window);
+			info = XRRGetOutputInfo(rrocevt->display, resources,
+					rrocevt->output);
 
-				XRRFreeOutputInfo(info);
-				XRRFreeScreenResources(resources);
-				break;
-			default:
-				syslog(LOG_NOTICE, "unknown event");
-				break;
-			}
+			syslog(LOG_INFO, "%s connection state: %s",
+					info->name,
+					connstates[info->connection]);
+			exec_script(script, connstates[info->connection],
+					"EDID");
+
+			XRRFreeOutputInfo(info);
+			XRRFreeScreenResources(resources);
 		}
 
 		/*
