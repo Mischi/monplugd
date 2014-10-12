@@ -86,10 +86,8 @@ main(int argc, char *argv[])
 	if ((dpy = XOpenDisplay(NULL)) == NULL)
 		errx(1, "can't open display");
 
-	if (!XRRQueryExtension(dpy, &rr_event_base, &rr_event_error)) {
-		XCloseDisplay(dpy);
-		errx(1, "no randr available");
-	}
+	if (!XRRQueryExtension(dpy, &rr_event_base, &rr_event_error))
+		errx(1, "randr extension not available");
 
 	if (EFlag) {
 		printf("edid hash\n");
@@ -99,7 +97,7 @@ main(int argc, char *argv[])
 	if (!script)
 		script = getscript();
 
-	bzero(&sact, sizeof(sact));
+	memset(&sact, 0, sizeof(sact));
 	sigemptyset(&sact.sa_mask);
 	sact.sa_flags = 0;
 	sact.sa_handler = sigquit;
