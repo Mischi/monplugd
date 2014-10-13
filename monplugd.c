@@ -241,7 +241,7 @@ monplugd(void)
 			info = XRRGetOutputInfo(rrocevt->display, resources,
 					rrocevt->output);
 
-			syslog(LOG_INFO, "%s connection state: %s", info->name,
+			syslog(LOG_INFO, "%s %s", info->name,
 					connstates[info->connection]);
 			exec_script(script, connstates[info->connection],
 					info->name, new_edidhash);
