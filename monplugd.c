@@ -16,11 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <err.h>
 #include <errno.h>
 #include <libgen.h>
+#include <rmd160.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,6 +30,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
@@ -42,18 +45,19 @@ const char *connstates[] = { "connected", "disconnected", "unknown" };
 int 				 debug = 0, interval = 1;
 int				 rr_event_base, rr_event_error;
 
-char *getscript(void);
-void  monplugd(void);
-void  exec_script(const char *, const char *, char *);
-
-void  sigchild(int);
-void  sigquit(int);
-__dead void usage(void);
+char		*getedidhash(void);
+char		*getscript(void);
+void		 monplugd(void);
+void		 exec_script(const char *, const char *, char *);
+void		 sigchild(int);
+void		 sigquit(int);
+__dead void	 usage(void);
 
 int
 main(int argc, char *argv[])
 {
 	const char			*errstr;
+	char				*edidhash;
 	struct sigaction		 sact;
 	int				 ch, EFlag = 0;
 
@@ -90,7 +94,9 @@ main(int argc, char *argv[])
 		errx(1, "randr extension not available");
 
 	if (EFlag) {
-		printf("edid hash\n");
+		edidhash = getedidhash();
+		printf("0x%s\n", edidhash);
+		free(edidhash);
 		return (0);
 	}
 
@@ -122,6 +128,44 @@ main(int argc, char *argv[])
 	XCloseDisplay(dpy);
 	closelog();
 	return (0);
+}
+
+char *
+getedidhash(void)
+{
+	XRRScreenResources		*resources;
+	uint8_t				*result = NULL;
+	unsigned char			*prop;
+	Window				 root;
+	Atom				 edid_atom, actual_type;
+	unsigned long			 edid_nitems, new_nitems = 0, nitems = 0;
+	unsigned long			 bytes_after;
+	int				 i, actual_format;
+
+	root = RootWindow(dpy, DefaultScreen(dpy));
+	resources = XRRGetScreenResources(dpy, root);
+	edid_atom = XInternAtom(dpy, RR_PROPERTY_RANDR_EDID, 0);
+
+	for (i = 0; i < resources->noutput; ++i) {
+		XRRGetOutputProperty(dpy, resources->outputs[i], edid_atom, 0,
+			100, 0, 0, AnyPropertyType, &actual_type,
+			&actual_format, &edid_nitems, &bytes_after, &prop);
+
+		if (actual_type == XA_INTEGER && actual_format == 8) {
+			new_nitems += edid_nitems;
+			result = reallocarray(result, new_nitems, sizeof(uint8_t));
+			if(result == NULL)
+				err(1, "malloc");
+
+			memcpy(result + nitems, prop, edid_nitems);
+			nitems = new_nitems;
+		}
+
+		XFree(prop);
+	}
+
+	XRRFreeScreenResources(resources);
+	return RMD160Data(result, sizeof(*result) * nitems, NULL);
 }
 
 char *
