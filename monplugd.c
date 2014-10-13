@@ -214,7 +214,7 @@ monplugd(void)
 	Window				 root;
 	XEvent	 			 evt;
 
-	exec_script(script, "INIT", "INIT", current_edidhash);
+	exec_script(script, "init", "", current_edidhash);
 
 	XRRSelectInput(dpy, DefaultRootWindow(dpy), RROutputChangeNotifyMask);
 	while (!quit) {
