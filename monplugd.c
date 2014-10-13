@@ -39,16 +39,19 @@
 #define _LOG_OPT			(LOG_NDELAY | LOG_PID)
 
 Display				*dpy;
-volatile sig_atomic_t		 quit = 0;
-const char			*script = NULL;
 const char *connstates[] = { "connected", "disconnected", "unknown" };
-int 				 debug = 0, interval = 1;
+const char			*script = NULL;
+char				*current_edidhash;
+volatile sig_atomic_t		 quit = 0;
+int 				 debug = 0, interval = 3;
 int				 rr_event_base, rr_event_error;
 
 char		*getedidhash(void);
+char		*getedidhash1(XRRScreenResources *);
 char		*getscript(void);
 void		 monplugd(void);
-void		 exec_script(const char *, const char *, char *);
+void		 exec_script(const char *, const char *, const char *,
+			const char *);
 void		 sigchild(int);
 void		 sigquit(int);
 __dead void	 usage(void);
@@ -57,7 +60,6 @@ int
 main(int argc, char *argv[])
 {
 	const char			*errstr;
-	char				*edidhash;
 	struct sigaction		 sact;
 	int				 ch, EFlag = 0;
 
@@ -93,10 +95,10 @@ main(int argc, char *argv[])
 	if (!XRRQueryExtension(dpy, &rr_event_base, &rr_event_error))
 		errx(1, "randr extension not available");
 
+	current_edidhash = getedidhash();
 	if (EFlag) {
-		edidhash = getedidhash();
-		printf("0x%s\n", edidhash);
-		free(edidhash);
+		printf("%s\n", current_edidhash);
+		free(current_edidhash);
 		return (0);
 	}
 
@@ -134,16 +136,29 @@ char *
 getedidhash(void)
 {
 	XRRScreenResources		*resources;
+	char				*edidhash;
+	Window				 root;
+
+	root = RootWindow(dpy, DefaultScreen(dpy));
+	resources = XRRGetScreenResources(dpy, root);
+
+	edidhash = getedidhash1(resources);
+
+	XRRFreeScreenResources(resources);
+	return edidhash;
+}
+
+
+char *
+getedidhash1(XRRScreenResources *resources)
+{
 	uint8_t				*result = NULL;
 	unsigned char			*prop;
-	Window				 root;
 	Atom				 edid_atom, actual_type;
 	unsigned long			 edid_nitems, new_nitems = 0, nitems = 0;
 	unsigned long			 bytes_after;
 	int				 i, actual_format;
 
-	root = RootWindow(dpy, DefaultScreen(dpy));
-	resources = XRRGetScreenResources(dpy, root);
 	edid_atom = XInternAtom(dpy, RR_PROPERTY_RANDR_EDID, 0);
 
 	for (i = 0; i < resources->noutput; ++i) {
@@ -164,9 +179,12 @@ getedidhash(void)
 		XFree(prop);
 	}
 
-	XRRFreeScreenResources(resources);
+	if (!result)
+		return NULL; /* XXX */
+
 	return RMD160Data(result, sizeof(*result) * nitems, NULL);
 }
+
 
 char *
 getscript(void)
@@ -192,6 +210,7 @@ monplugd(void)
 	XRROutputInfo			*info;
 	XRROutputChangeNotifyEvent	*rrocevt;
 	XRRNotifyEvent			*rrevt;
+	char				*new_edidhash;
 	Window				 root;
 	XEvent	 			 evt;
 
@@ -212,14 +231,20 @@ monplugd(void)
 			rrocevt = (XRROutputChangeNotifyEvent *)&evt;
 			resources = XRRGetScreenResourcesCurrent(dpy,
 					rrocevt->window);
+
+			new_edidhash = getedidhash1(resources);
+			if (!strcmp(current_edidhash, new_edidhash))
+				continue;
+
+			free(current_edidhash);
+			current_edidhash = new_edidhash;
 			info = XRRGetOutputInfo(rrocevt->display, resources,
 					rrocevt->output);
 
-			syslog(LOG_INFO, "%s connection state: %s",
-					info->name,
+			syslog(LOG_INFO, "%s connection state: %s", info->name,
 					connstates[info->connection]);
 			exec_script(script, connstates[info->connection],
-					"EDID");
+					info->name, new_edidhash);
 
 			XRRFreeOutputInfo(info);
 			XRRFreeScreenResources(resources);
@@ -239,7 +264,8 @@ monplugd(void)
 }
 
 void
-exec_script(const char *file, const char *connstate, char *name)
+exec_script(const char *file, const char *connstate, const char *output,
+		const char *edidhash)
 {
 	pid_t pid;
 
@@ -255,7 +281,7 @@ exec_script(const char *file, const char *connstate, char *name)
 	}
 	if (pid == 0) {
 		/* child process */
-		execl(file, basename(file), connstate, name, (char *)NULL);
+		execl(file, basename(file), connstate, output, edidhash, (char *)NULL);
 		syslog(LOG_ERR, "execl %s: %m", file);
 		_exit(1);
 		/* NOTREACHED */
