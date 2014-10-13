@@ -233,8 +233,11 @@ monplugd(void)
 					rrocevt->window);
 
 			new_edidhash = getedidhash1(resources);
-			if (!strcmp(current_edidhash, new_edidhash))
+			if (!strcmp(current_edidhash, new_edidhash)) {
+				free(new_edidhash);
+				XRRFreeScreenResources(resources);
 				continue;
+			}
 
 			free(current_edidhash);
 			current_edidhash = new_edidhash;
