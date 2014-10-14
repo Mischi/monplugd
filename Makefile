@@ -1,14 +1,15 @@
-PROG =		monplugd
-NOMAN =		NOMAN
+PROG =		randrd
+MAN =		randrd.8
 
-LDADD +=	-L/usr/X11R6/lib
-LDADD +=	-lX11 -lXrandr
-CFLAGS +=	-I/usr/X11R6/include -Wall
-CFLAGS +=	-Wstrict-prototypes -Wmissing-prototypes
+CPPFLAGS +=	-I/usr/X11R6/include
+CFLAGS +=	-Wall -Wstrict-prototypes
+CFLAGS +=	-Wmissing-prototypes
 CFLAGS +=	-Wmissing-declarations
 CFLAGS +=	-Wshadow -Wpointer-arith
 CFLAGS +=	-Wsign-compare
+LDADD +=	-L/usr/X11R6/lib -lX11 -lXrandr
 
-DEBUG =		-g
+BINDIR ?=	/usr/local/bin
+#DEBUG =		-g
 
 .include <bsd.prog.mk>

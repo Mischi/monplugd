@@ -34,7 +34,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
-#define _LOG_TAG			"monplugd"
+#define _LOG_TAG			"randrd"
 #define _LOG_FACILITY			LOG_DAEMON
 #define _LOG_OPT			(LOG_NDELAY | LOG_PID)
 
@@ -49,7 +49,7 @@ int				 rr_event_base, rr_event_error;
 char		*getedidhash(void);
 char		*getedidhash1(XRRScreenResources *);
 char		*getscript(void);
-void		 monplugd(void);
+void		 randrd(void);
 void		 exec_script(const char *, const char *, const char *,
 			const char *);
 void		 sigchild(int);
@@ -124,7 +124,7 @@ main(int argc, char *argv[])
 		err(1, "daemon");
 
 	syslog(LOG_INFO, "started");
-	monplugd();
+	randrd();
 	syslog(LOG_INFO, "terminated");
 
 	XCloseDisplay(dpy);
@@ -196,7 +196,7 @@ getscript(void)
 	if (!(home = getenv("HOME")))
 		errx(1, "can't find HOME");
 
-	ret = snprintf(scriptbuf, sizeof(scriptbuf), "%s/.monplugd", home);
+	ret = snprintf(scriptbuf, sizeof(scriptbuf), "%s/.randrd", home);
 	if (ret == -1 || ret >= sizeof(scriptbuf))
 		errx(1, "scriptpath to long");
 
@@ -204,7 +204,7 @@ getscript(void)
 }
 
 void
-monplugd(void)
+randrd(void)
 {
 	XRRScreenResources		*resources;
 	XRROutputInfo			*info;

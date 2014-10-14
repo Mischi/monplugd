@@ -1,0 +1,81 @@
+.\"
+.\" Copyright (c) 2014 Fabian Raetz <fabian.raetz@gmail.com>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: October 13 2014 $
+.Dt RANDRD 8
+.Os
+.Sh NAME
+.Nm randrd
+.Nd randr monitor daemon
+.Sh SYNOPSIS
+.Nm randrd
+.Op Fl d
+.Op Fl f Ar file
+.Op Fl i Ar interval
+.Nm randrd
+.Fl E
+.Sh DESCRIPTION
+The
+.Nm
+utility processes files ...
+.Sh FILES
+.Bl -tag -width "$HOME/.randrd" -compact
+.It $HOME/.randrd
+Script to execute when outputs change.
+.El
+.\" .Sh EXIT STATUS
+.\" For sections 1, 6, and 8 only.
+.Sh EXAMPLES
+Sample
+.Pa .randrd
+script:
+.Bd -literal -offset indent
+#!/bin/sh
+
+CONNECTIONSTATE=$1
+OUTPUT=$2
+EDIDHASH=$3
+
+case $EDIDHASH in
+"9030ffc857dc906a635d1da0799b22d25e2b814e")
+	CUR="Work"
+	xrandr --output VGA1 --auto --above LVDS1
+	;;
+"67034f8cfb71cebf10c9bc21dd9eac9f06512861")
+	CUR="Home"
+	xrandr --output VAG1 --auto --right-of LVDS1
+	;;
+*)
+	CUR="Default"
+	xrandr --auto
+	;;
+esac
+
+logger "$OUTPUT $CONNECTIONSTATE: Loading $CUR xrandr profile"
+.Ed
+.\" .Sh DIAGNOSTICS
+.\" For sections 1, 4, 6, 7, 8, and 9 printf/stderr messages only.
+.\" .Sh ERRORS
+.\" For sections 2, 3, 4, and 9 errno settings only.
+.Sh SEE ALSO
+.Xr xrandr 1
+.\" .Sh STANDARDS
+.\" .Sh HISTORY
+.Sh AUTHORS
+The
+.Nm
+program was written by
+.An Fabian Raetz Aq Mt fabian.raetz@gmail.com .
+.\" .Sh CAVEATS
