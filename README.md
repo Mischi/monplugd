@@ -1,11 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>
-RANDRD(1)</title>
-</head>
-<body>
 <div class="mandoc">
 <table class="head">
 <tbody>
@@ -122,6 +114,4 @@ OpenBSD 5.6</td>
 </tbody>
 </table>
 </div>
-</body>
-</html>
 
