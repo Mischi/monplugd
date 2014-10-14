@@ -1,5 +1,5 @@
 PROG =		randrd
-MAN =		randrd.8
+MAN =		randrd.1
 
 CPPFLAGS +=	-I/usr/X11R6/include
 CFLAGS +=	-Wall -Wstrict-prototypes

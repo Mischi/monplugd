@@ -14,7 +14,7 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .Dd $Mdocdate: October 13 2014 $
-.Dt RANDRD 8
+.Dt RANDRD 1
 .Os
 .Sh NAME
 .Nm randrd
@@ -28,15 +28,64 @@
 .Fl E
 .Sh DESCRIPTION
 The
+.Xr Xorg 1
+server relies on libudev to monitor/detect physical screen configuration
+changes.  Interested partys can register the
+.Sy XRRScreenChangeNotify
+event via
+.Xr XRRSelectInput 3
+to get notified.
+Systems that lack libudev will not get any
+.Sy XRRScreenChangeNotify
+when the physical screen configuration changes.
+.Pp
+The
 .Nm
-utility processes files ...
+utility polls screen resources from Xrandr(3) after a regular
+.Ar interval .
+This causes
+.Xr Xorg 1
+to check if any screen configuration has changed and will emit
+the appropriate events which will be handled by
+.Nm .
+If the physical screen configuration has changed,
+.Nm
+will execute the specified
+.Ar file
+and passes the
+.Sy CONNECTIONSTATE ,
+the 
+.Sy OUTPUT
+which has changed and an
+.Xr rmd160 3
+.Sy EDIDHASH
+over all screen EDID's.
+.Nm
+supports the following flags:
+.Bl -tag -width -Dssinterval
+.It Fl d
+Debug mode.  Don't detach or become a daemon.
+.It Fl f Ar file
+Specifies the file which will be executed if the physical screen
+configuration has changed.  The default is
+.Pa $HOME/.randrd .
+.It Fl i Ar interval
+Specifies the default interval in seconds after which
+screen resources are polled.  The allowed range is between
+1 and 60.  The default is 3 seconds.
+.It Fl E
+Prints the
+.Xr rmd160 3
+.Sy EDIDHASH
+for the actual screen configuration to stdout.
+.El
 .Sh FILES
 .Bl -tag -width "$HOME/.randrd" -compact
 .It $HOME/.randrd
-Script to execute when outputs change.
+default
+.Ar file
+to execute when outputs change.
 .El
-.\" .Sh EXIT STATUS
-.\" For sections 1, 6, and 8 only.
 .Sh EXAMPLES
 Sample
 .Pa .randrd
@@ -65,17 +114,17 @@ esac
 
 logger "$OUTPUT $CONNECTIONSTATE: Loading $CUR xrandr profile"
 .Ed
-.\" .Sh DIAGNOSTICS
-.\" For sections 1, 4, 6, 7, 8, and 9 printf/stderr messages only.
-.\" .Sh ERRORS
-.\" For sections 2, 3, 4, and 9 errno settings only.
 .Sh SEE ALSO
 .Xr xrandr 1
-.\" .Sh STANDARDS
-.\" .Sh HISTORY
+.Xr Xrandr 3
 .Sh AUTHORS
 The
 .Nm
 program was written by
 .An Fabian Raetz Aq Mt fabian.raetz@gmail.com .
-.\" .Sh CAVEATS
+.Sh CAVEATS
+Constantly polling screen resources from
+.Xr Xrandr 3
+can decrease performance. If your System has libudev support,
+consider using an alternative utility like
+.Xr srandrd 1
