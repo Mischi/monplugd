@@ -2,14 +2,6 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<style>
-table.head, table.foot { width: 100%; }
-td.head-rtitle, td.foot-os { text-align: right; }
-td.head-vol { text-align: center; }
-table.foot td { width: 50%; }
-table.head td { width: 33%; }
-div.spacer { margin: 1em 0; }
-</style>
 <title>
 RANDRD(1)</title>
 </head>
