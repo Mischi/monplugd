@@ -152,7 +152,8 @@ getedidhash(void)
 char *
 getedidhash1(XRRScreenResources *resources)
 {
-	uint8_t				*result = NULL;
+	uint8_t				*edids = NULL;
+	char				*edidhash;
 	unsigned char			*prop;
 	Atom				 edid_atom, actual_type;
 	unsigned long			 edid_nitems, new_nitems = 0, nitems = 0;
@@ -168,21 +169,23 @@ getedidhash1(XRRScreenResources *resources)
 
 		if (actual_type == XA_INTEGER && actual_format == 8) {
 			new_nitems += edid_nitems;
-			result = reallocarray(result, new_nitems, sizeof(uint8_t));
-			if(result == NULL)
+			edids = reallocarray(edids, new_nitems, sizeof(uint8_t));
+			if(edids == NULL)
 				err(1, "malloc");
 
-			memcpy(result + nitems, prop, edid_nitems);
+			memcpy(edids + nitems, prop, edid_nitems);
 			nitems = new_nitems;
 		}
 
 		XFree(prop);
 	}
 
-	if (!result)
+	if (!edids)
 		return NULL; /* XXX */
 
-	return RMD160Data(result, sizeof(*result) * nitems, NULL);
+	edidhash = RMD160Data(edids, sizeof(*edids) * nitems, NULL);
+	free(edids);
+	return edidhash;
 }
 
 
