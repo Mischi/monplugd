@@ -200,7 +200,7 @@ getscript(void)
 		errx(1, "can't find HOME");
 
 	ret = snprintf(scriptbuf, sizeof(scriptbuf), "%s/.randrd", home);
-	if (ret == -1 || ret >= sizeof(scriptbuf))
+	if (ret < 0 || (size_t)ret >= sizeof(scriptbuf))
 		errx(1, "scriptpath to long");
 
 	return (scriptbuf);
@@ -228,7 +228,7 @@ randrd(void)
 				continue;
 
 			rrevt = (XRRNotifyEvent *)&evt;
-			if (rrevt->subtype != RRNotify_OutputChange) 
+			if (rrevt->subtype != RRNotify_OutputChange)
 				continue;
 
 			rrocevt = (XRROutputChangeNotifyEvent *)&evt;
