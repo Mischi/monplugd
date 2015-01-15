@@ -145,7 +145,7 @@ getedidhash(void)
 	edidhash = getedidhash1(resources);
 
 	XRRFreeScreenResources(resources);
-	return edidhash;
+	return (edidhash);
 }
 
 
@@ -180,12 +180,12 @@ getedidhash1(XRRScreenResources *resources)
 		XFree(prop);
 	}
 
-	if (!edids)
-		return NULL; /* XXX */
+	if (edids == NULL)
+		return (NULL); /* XXX */
 
 	edidhash = RMD160Data(edids, sizeof(*edids) * nitems, NULL);
 	free(edids);
-	return edidhash;
+	return (edidhash);
 }
 
 
@@ -203,7 +203,7 @@ getscript(void)
 	if (ret == -1 || ret >= sizeof(scriptbuf))
 		errx(1, "scriptpath to long");
 
-	return scriptbuf;
+	return (scriptbuf);
 }
 
 void
