@@ -10,6 +10,5 @@ CFLAGS +=	-Wsign-compare
 LDADD +=	-L/usr/X11R6/lib -lX11 -lXrandr
 
 BINDIR ?=	/usr/local/bin
-#DEBUG =		-g
 
 .include <bsd.prog.mk>
