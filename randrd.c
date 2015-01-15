@@ -102,7 +102,7 @@ main(int argc, char *argv[])
 		return (0);
 	}
 
-	if (!script)
+	if (script == NULL)
 		script = getscript();
 
 	memset(&sact, 0, sizeof(sact));
