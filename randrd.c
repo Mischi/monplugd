@@ -169,7 +169,7 @@ getedidhash1(XRRScreenResources *resources)
 
 		if (actual_type == XA_INTEGER && actual_format == 8) {
 			new_nitems += edid_nitems;
-			edids = reallocarray(edids, new_nitems, sizeof(uint8_t));
+			edids = reallocarray(edids, new_nitems, sizeof(*edids));
 			if(edids == NULL)
 				err(1, "malloc");
 
