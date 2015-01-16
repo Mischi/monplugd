@@ -345,7 +345,7 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "usage:"
-		"\t%s [-d] [-f file] [-i interval]\n"
-		"\t%s -E\n", __progname, __progname);
+		"\t%1$s [-d] [-f file] [-i interval]\n"
+		"\t%1$s -E\n",  __progname);
 	exit(1);
 }
