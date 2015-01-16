@@ -1,7 +1,7 @@
 /*	$OpenBSD: hotplugd.c,v 1.12 2010/01/10 13:20:41 grange Exp $	*/
 /*
  * Copyright (c) 2004 Alexander Yurchenko <grange@openbsd.org>
- * Copyright (c) 2014 Fabian Raetz <fabian.raetz@gmail.com>
+ * Copyright (c) 2014-2015 Fabian Raetz <fabian.raetz@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
