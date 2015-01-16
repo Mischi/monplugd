@@ -96,6 +96,11 @@ main(int argc, char *argv[])
 		errx(1, "randr extension not available");
 
 	current_edidhash = getedidhash();
+	if (current_edidhash == NULL) {
+		free(current_edidhash);
+		errx(1, "getedithash");
+	}
+
 	if (EFlag) {
 		printf("%s\n", current_edidhash);
 		free(current_edidhash);
@@ -181,7 +186,7 @@ getedidhash1(XRRScreenResources *resources)
 	}
 
 	if (edids == NULL)
-		return (NULL); /* XXX */
+		return (NULL);
 
 	edidhash = RMD160Data(edids, sizeof(*edids) * nitems, NULL);
 	free(edids);
@@ -196,7 +201,7 @@ getscript(void)
 	static char			 scriptbuf[1024];
 	int				 ret;
 
-	if (!(home = getenv("HOME")))
+	if ((home = getenv("HOME")) == NULL)
 		errx(1, "can't find HOME");
 
 	ret = snprintf(scriptbuf, sizeof(scriptbuf), "%s/.randrd", home);
