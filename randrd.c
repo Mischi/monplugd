@@ -46,15 +46,15 @@ volatile sig_atomic_t		 quit = 0;
 int 				 debug = 0, interval = 3;
 int				 rr_event_base, rr_event_error;
 
-char		*getedidhash(void);
-char		*getedidhash1(XRRScreenResources *);
-char		*getscript(void);
-void		 randrd(void);
-void		 exec_script(const char *, const char *, const char *,
-			const char *);
-void		 sigchild(int);
-void		 sigquit(int);
-__dead void	 usage(void);
+static char			*getedidhash(void);
+static char			*getedidhash1(XRRScreenResources *);
+static char			*getscript(void);
+static void			 randrd(void);
+static void			 exec_script(const char *, const char *, const char *,
+					const char *);
+static void			 sigchild(int);
+static void			 sigquit(int);
+__dead static void	 	 usage(void);
 
 int
 main(int argc, char *argv[])
@@ -96,14 +96,12 @@ main(int argc, char *argv[])
 		errx(1, "randr extension not available");
 
 	current_edidhash = getedidhash();
-	if (current_edidhash == NULL) {
-		free(current_edidhash);
-		errx(1, "getedithash");
-	}
 
 	if (EFlag) {
+		if (current_edidhash == NULL)
+			return (1);
+
 		printf("%s\n", current_edidhash);
-		free(current_edidhash);
 		return (0);
 	}
 
@@ -137,7 +135,7 @@ main(int argc, char *argv[])
 	return (0);
 }
 
-char *
+static char *
 getedidhash(void)
 {
 	XRRScreenResources		*resources;
@@ -154,7 +152,7 @@ getedidhash(void)
 }
 
 
-char *
+static char *
 getedidhash1(XRRScreenResources *resources)
 {
 	uint8_t				*edids = NULL;
@@ -194,7 +192,7 @@ getedidhash1(XRRScreenResources *resources)
 }
 
 
-char *
+static char *
 getscript(void)
 {
 	const char			*home;
@@ -211,7 +209,7 @@ getscript(void)
 	return (scriptbuf);
 }
 
-void
+static void
 randrd(void)
 {
 	XRRScreenResources		*resources;
@@ -226,6 +224,9 @@ randrd(void)
 
 	XRRSelectInput(dpy, DefaultRootWindow(dpy), RROutputChangeNotifyMask);
 	while (!quit) {
+		root = RootWindow(dpy, DefaultScreen(dpy));
+		resources = XRRGetScreenResources(dpy, root);
+
 		while (XPending(dpy)) {
 			XNextEvent(dpy, &evt);
 
@@ -236,19 +237,19 @@ randrd(void)
 			if (rrevt->subtype != RRNotify_OutputChange)
 				continue;
 
-			rrocevt = (XRROutputChangeNotifyEvent *)&evt;
-			resources = XRRGetScreenResourcesCurrent(dpy,
-					rrocevt->window);
-
 			new_edidhash = getedidhash1(resources);
+			if (new_edidhash == NULL)
+				continue;
+
 			if (!strcmp(current_edidhash, new_edidhash)) {
 				free(new_edidhash);
-				XRRFreeScreenResources(resources);
 				continue;
 			}
 
 			free(current_edidhash);
 			current_edidhash = new_edidhash;
+
+			rrocevt = (XRROutputChangeNotifyEvent *)&evt;
 			info = XRRGetOutputInfo(rrocevt->display, resources,
 					rrocevt->output);
 
@@ -258,23 +259,14 @@ randrd(void)
 					info->name, new_edidhash);
 
 			XRRFreeOutputInfo(info);
-			XRRFreeScreenResources(resources);
 		}
 
-		/*
-		 * On OpenBSD, the XServer isn't notified when a display is
-		 * plugged in/out.  On Linux, the XServer uses libudev to receive
-		 * these notifications which is not available on OpenBSD.
-		 */
-		sleep(interval);
-
-		root = RootWindow(dpy, DefaultScreen(dpy));
-		resources = XRRGetScreenResources(dpy, root);
 		XRRFreeScreenResources(resources);
+		sleep(interval);
 	}
 }
 
-void
+static void
 exec_script(const char *file, const char *connstate, const char *output,
 		const char *edidhash)
 {
@@ -300,7 +292,7 @@ exec_script(const char *file, const char *connstate, const char *output,
 }
 
 /* ARGSUSED */
-void
+static void
 sigchild(int signum)
 {
 	struct syslog_data sdata = SYSLOG_DATA_INIT;
@@ -338,13 +330,13 @@ sigchild(int signum)
 }
 
 /* ARGSUSED */
-void
+static void
 sigquit(int signum)
 {
 	quit = 1;
 }
 
-__dead void
+__dead static void
 usage(void)
 {
 	extern char *__progname;
